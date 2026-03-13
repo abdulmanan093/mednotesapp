@@ -339,7 +339,7 @@ export default function SettingsScreen() {
               style={styles.modalButton}
               onPress={() => {
                 setContactVisible(false);
-                Linking.openURL("mailto:support@mednotes.app");
+                Linking.openURL("mailto:abdul10761093174@gmail.com");
               }}
             >
               <Text style={styles.modalButtonText}>Send Email</Text>
