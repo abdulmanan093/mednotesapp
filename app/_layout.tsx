@@ -1,48 +1,96 @@
 import "../global.css";
-import { useEffect, useState, useCallback } from "react";
-import { AppState, LogBox } from "react-native";
+import { useEffect, useState } from "react";
+import { LogBox, View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LibraryProvider } from "@/contexts/LibraryContext";
+import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import * as ScreenCapture from "expo-screen-capture";
 
-// Suppress deprecation warning from react-navigation internals
+import {
+  DefaultTheme,
+  DarkTheme,
+  ThemeProvider as NavThemeProvider,
+} from "@react-navigation/native";
+import * as NavigationBar from "expo-navigation-bar";
+import * as SplashScreen from "expo-splash-screen";
+import CustomSplashScreen from "@/components/CustomSplashScreen";
+
+// Suppress deprecation warning from react-native internally caused by expo-router / react-navigation
 LogBox.ignoreLogs(["SafeAreaView has been deprecated"]);
 
+// Keep the native splash screen visible while we initialize our custom one
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
-  // Force SafeAreaProvider to remount when app returns from background
-  const [safeAreaKey, setSafeAreaKey] = useState(0);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    ScreenCapture.preventScreenCaptureAsync();
+    ScreenCapture.preventScreenCaptureAsync().catch(console.warn);
+    SplashScreen.hideAsync().catch(console.warn);
   }, []);
-
-  const handleAppStateChange = useCallback((nextState: string) => {
-    if (nextState === "active") {
-      setSafeAreaKey((k) => k + 1);
-    }
-  }, []);
-
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", handleAppStateChange);
-    return () => sub.remove();
-  }, [handleAppStateChange]);
 
   return (
-    <SafeAreaProvider key={safeAreaKey}>
-      <AuthProvider>
-        <SafeAreaView
-          style={{ flex: 1 }}
-          edges={["top", "bottom", "left", "right"]}
-        >
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="auto" />
-        </SafeAreaView>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <ThemeProvider>
+      <SafeAreaProvider>
+        <AppContent
+          showSplash={showSplash}
+          onSplashFinish={() => setShowSplash(false)}
+        />
+      </SafeAreaProvider>
+    </ThemeProvider>
+  );
+}
+
+function AppContent({
+  showSplash,
+  onSplashFinish,
+}: {
+  showSplash: boolean;
+  onSplashFinish: () => void;
+}) {
+  const { theme, isDark, applyNavBarStyle } = useTheme();
+
+  // Forcefully apply nav bar color the exact moment splash screen hides
+  useEffect(() => {
+    if (!showSplash) {
+      applyNavBarStyle();
+      // One final delayed fallback just in case the layout shifts
+      setTimeout(applyNavBarStyle, 400); 
+    }
+  }, [showSplash, applyNavBarStyle]);
+
+  const navigationTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme.colors : DefaultTheme.colors),
+      background: theme.background,
+      card: theme.card,
+      text: theme.text,
+      border: theme.border,
+      primary: theme.primary,
+    },
+  };
+
+  return (
+    // This root View fills the entire screen including behind status bar &
+    // nav bar (edge-to-edge). Each individual screen handles its own
+    // safe-area padding via useSafeAreaInsets().
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <NavThemeProvider value={navigationTheme}>
+        <AuthProvider>
+          <LibraryProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+            <StatusBar style={isDark ? "light" : "dark"} />
+            {showSplash && <CustomSplashScreen onFinish={onSplashFinish} />}
+          </LibraryProvider>
+        </AuthProvider>
+      </NavThemeProvider>
+    </View>
   );
 }

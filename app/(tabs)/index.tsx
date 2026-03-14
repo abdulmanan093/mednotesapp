@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,12 +6,16 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BookOpen, GraduationCap, ChevronRight } from "lucide-react-native";
 import { router } from "expo-router";
-import { Block } from "@/types/database";
-import { apiGetBlocks } from "@/lib/api";
+import { useLibrary } from "@/contexts/LibraryContext";
+import { useNavigationLock } from "@/hooks/useNavigationLock";
+import { useTheme } from "@/contexts/ThemeContext";
+import { ThemeColors } from "@/constants/Colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const YEAR_LABELS: Record<number, string> = {
   1: "First Year",
@@ -24,69 +28,82 @@ const YEAR_LABELS: Record<number, string> = {
 interface YearGroup {
   year: number;
   name: string;
-  blocks: Block[];
   totalBlocks: number;
 }
 
 export default function HomeScreen() {
-  const [yearGroups, setYearGroups] = useState<YearGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { blocks, isLoading } = useLibrary();
+  const navigate = useNavigationLock();
+  
+  const { theme, isDark } = useTheme();
+  const styles = createStyles(theme);
+  const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    loadBlocks();
-  }, []);
-
-  async function loadBlocks() {
-    try {
-      const { blocks } = await apiGetBlocks();
-
-      const grouped = (blocks || []).reduce<Record<number, Block[]>>(
-        (acc, block) => {
-          if (!acc[block.year]) acc[block.year] = [];
-          acc[block.year].push(block);
-          return acc;
-        },
-        {},
-      );
-
-      const groups: YearGroup[] = Object.keys(grouped)
-        .map(Number)
-        .sort((a, b) => a - b)
-        .map((year) => ({
-          year,
-          name: YEAR_LABELS[year] || `Year ${year}`,
-          blocks: grouped[year],
-          totalBlocks: grouped[year].length,
-        }));
-
-      setYearGroups(groups);
-    } catch (error) {
-      console.error("Error loading blocks:", error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Group blocks by year — pure local computation, no network
+  const yearGroups: YearGroup[] = React.useMemo(() => {
+    const years = [...new Set(blocks.map((b) => b.year))].sort((a, b) => a - b);
+    return years.map((year) => ({
+      year,
+      name: YEAR_LABELS[year] || `Year ${year}`,
+      totalBlocks: blocks.filter((b) => b.year === year).length,
+    }));
+  }, [blocks]);
 
   const yearColors = ["#3B82F6", "#A855F7", "#10B981", "#F97316"];
 
-  if (loading) {
+  // Show skeleton cards while loading for first time (no cache)
+  if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6366F1" />
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          <View style={styles.logoContainer}>
+            <View style={styles.logoBackground}>
+              <Image
+                source={require("@/assets/images/logo.png")}
+                style={styles.logoImage}
+                resizeMode="cover"
+              />
+            </View>
+          </View>
+          <Text style={styles.headerTitle}>Medical Notes</Text>
+          <Text style={styles.headerSubtitle}>
+            ✨ Your MBBS Learning Companion ✨
+          </Text>
+        </View>
+        <View style={styles.skeletonContainer}>
+          {[1, 2, 3, 4].map((i) => (
+            <View key={i} style={styles.skeletonCard}>
+              <View style={styles.skeletonTopBar} />
+              <View style={styles.skeletonContent}>
+                <View style={styles.skeletonIcon} />
+                <View style={styles.skeletonLines}>
+                  <View style={styles.skeletonLine1} />
+                  <View style={styles.skeletonLine2} />
+                </View>
+              </View>
+            </View>
+          ))}
+          <ActivityIndicator
+            style={{ marginTop: 8 }}
+            size="small"
+            color={theme.primary}
+          />
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: 16 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={styles.logoContainer}>
-          <LinearGradient
-            colors={["#6366F1", "#8B5CF6"]}
-            style={styles.logoGradient}
-          >
-            <BookOpen color="#FFFFFF" size={32} />
-          </LinearGradient>
+          <View style={styles.logoBackground}>
+            <Image
+              source={require("@/assets/images/logo.png")}
+              style={styles.logoImage}
+              resizeMode="cover"
+            />
+          </View>
         </View>
         <Text style={styles.headerTitle}>Medical Notes</Text>
         <Text style={styles.headerSubtitle}>
@@ -103,7 +120,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={group.year}
               style={styles.yearCard}
-              onPress={() => router.push(`/year/${group.year}`)}
+              onPress={() => navigate(() => router.push(`/year/${group.year}`))}
             >
               <View
                 style={[
@@ -129,7 +146,7 @@ export default function HomeScreen() {
                   <View style={styles.yearInfo}>
                     <Text style={styles.yearName}>{group.name}</Text>
                     <View style={styles.yearMeta}>
-                      <BookOpen color="#6B7280" size={14} />
+                      <BookOpen color={theme.textPlaceholder} size={14} />
                       <Text style={styles.yearMetaText}>
                         {group.totalBlocks} Blocks
                       </Text>
@@ -158,43 +175,51 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: theme.background,
   },
   header: {
     alignItems: "center",
     paddingBottom: 24,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    borderBottomColor: theme.border,
   },
   logoContainer: {
-    marginBottom: 12,
+    marginBottom: 16,
+    backgroundColor: theme.card,
+    borderRadius: 24,
+    padding: 4,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  logoGradient: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+  logoBackground: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  logoImage: {
+    width: "100%",
+    height: "100%",
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: "700",
-    color: "#6366F1",
+    color: theme.primary,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: "#6B7280",
+    color: theme.textMuted,
   },
   scrollView: {
     flex: 1,
@@ -204,7 +229,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   yearCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     borderRadius: 16,
     overflow: "hidden",
     shadowColor: "#000",
@@ -242,7 +267,7 @@ const styles = StyleSheet.create({
   yearName: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1F2937",
+    color: theme.text,
     marginBottom: 6,
   },
   yearMeta: {
@@ -252,11 +277,7 @@ const styles = StyleSheet.create({
   },
   yearMetaText: {
     fontSize: 13,
-    color: "#6B7280",
-  },
-  yearMetaDot: {
-    fontSize: 13,
-    color: "#D1D5DB",
+    color: theme.textMuted,
   },
   chevronContainer: {
     width: 36,
@@ -264,5 +285,53 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+  },
+  // Skeleton styles
+  skeletonContainer: {
+    padding: 16,
+    gap: 16,
+  },
+  skeletonCard: {
+    backgroundColor: theme.card,
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  skeletonTopBar: {
+    height: 4,
+    backgroundColor: theme.skeletonLine,
+  },
+  skeletonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 16,
+  },
+  skeletonIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: theme.skeletonBase,
+  },
+  skeletonLines: {
+    flex: 1,
+    gap: 8,
+  },
+  skeletonLine1: {
+    height: 16,
+    backgroundColor: theme.skeletonBase,
+    borderRadius: 8,
+    width: "60%",
+  },
+  skeletonLine2: {
+    height: 12,
+    backgroundColor: theme.skeletonBase,
+    borderRadius: 6,
+    width: "40%",
   },
 });

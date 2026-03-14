@@ -9,6 +9,7 @@ export interface Subject {
   id: string;
   name: string;
   block_id: string;
+  sort_order?: number;
   created_at: string;
 }
 
@@ -17,6 +18,7 @@ export interface Chapter {
   name: string;
   subject_id: string;
   block_id: string;
+  sort_order?: number;
   created_at: string;
 }
 

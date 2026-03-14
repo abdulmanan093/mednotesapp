@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,9 +16,12 @@ import {
   ShoppingCart,
 } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { Block } from "@/types/database";
-import { apiGetBlocks } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLibrary } from "@/contexts/LibraryContext";
+import { useNavigationLock } from "@/hooks/useNavigationLock";
+import { useTheme } from "@/contexts/ThemeContext";
+import { ThemeColors } from "@/constants/Colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const YEAR_LABELS: Record<number, string> = {
   1: "First Year",
@@ -33,46 +35,30 @@ export default function YearBlocksScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const yearNumber = parseInt(id || "1", 10);
   const { isLoggedIn, isBlockAccessible, isAccountDisabled } = useAuth();
-  const [blocks, setBlocks] = useState<Block[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { getBlocksByYear } = useLibrary();
   const [showLockedPopup, setShowLockedPopup] = useState(false);
+  const navigate = useNavigationLock();
+  
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+  const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    loadBlocks();
-  }, [yearNumber]);
+  // No loading, no API call — instant filter from cache
+  const blocks = getBlocksByYear(yearNumber);
 
-  async function loadBlocks() {
-    try {
-      const { blocks } = await apiGetBlocks(yearNumber);
-      setBlocks(blocks || []);
-    } catch (error) {
-      console.error("Error loading blocks:", error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleBlockPress(block: Block) {
-    if (!isLoggedIn || !isBlockAccessible(block.id)) {
+  function handleBlockPress(blockId: string) {
+    if (!isLoggedIn || !isBlockAccessible(blockId)) {
       setShowLockedPopup(true);
       return;
     }
-    router.push(`/block/${block.id}`);
-  }
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6366F1" />
-      </View>
-    );
+    navigate(() => router.push(`/block/${blockId}`));
   }
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["#3B82F6", "#60A5FA"]}
-        style={[styles.header, { paddingTop: 16 }]}
+        colors={[theme.primaryGradientStart, theme.primaryGradientEnd]}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
@@ -103,21 +89,21 @@ export default function YearBlocksScreen() {
               <TouchableOpacity
                 key={block.id}
                 style={[styles.blockCard, isLocked && styles.blockCardLocked]}
-                onPress={() => handleBlockPress(block)}
+                onPress={() => handleBlockPress(block.id)}
               >
                 <View style={styles.blockContent}>
                   <View
                     style={[
                       styles.blockIcon,
                       {
-                        backgroundColor: isLocked ? "#F3F4F6" : "#EEF2FF",
+                        backgroundColor: isLocked ? theme.skeletonBase : theme.primaryLight,
                       },
                     ]}
                   >
                     {isLocked ? (
-                      <Lock color="#9CA3AF" size={24} />
+                      <Lock color={theme.textPlaceholder} size={24} />
                     ) : (
-                      <BookOpen color="#3B82F6" size={24} />
+                      <BookOpen color={theme.primary} size={24} />
                     )}
                   </View>
                   <View style={styles.blockInfo}>
@@ -131,16 +117,16 @@ export default function YearBlocksScreen() {
                     </Text>
                     {isLocked && (
                       <View style={styles.lockedBadge}>
-                        <Lock color="#9CA3AF" size={12} />
+                        <Lock color={theme.textPlaceholder} size={12} />
                         <Text style={styles.lockedText}>Locked</Text>
                       </View>
                     )}
                   </View>
-                  <View style={styles.chevronContainer}>
+                  <View style={[styles.chevronContainer, { backgroundColor: isLocked ? theme.skeletonBase : theme.primaryLight }]}>
                     {isLocked ? (
-                      <Lock color="#9CA3AF" size={18} />
+                      <Lock color={theme.textPlaceholder} size={18} />
                     ) : (
-                      <ChevronRight color="#3B82F6" size={20} />
+                      <ChevronRight color={theme.primary} size={20} />
                     )}
                   </View>
                 </View>
@@ -155,7 +141,7 @@ export default function YearBlocksScreen() {
         <View style={styles.popupOverlay}>
           <View style={styles.popupContent}>
             <View style={styles.popupIconContainer}>
-              <ShoppingCart color="#F59E0B" size={40} />
+              <ShoppingCart color={theme.warning} size={40} />
             </View>
             <Text style={styles.popupTitle}>Course Locked</Text>
             <Text style={styles.popupMessage}>
@@ -178,16 +164,10 @@ export default function YearBlocksScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: theme.background,
   },
   header: {
     paddingBottom: 32,
@@ -223,7 +203,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   blockCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -234,9 +214,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   blockCardLocked: {
-    backgroundColor: "#F9FAFB",
+    backgroundColor: theme.background,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: theme.border,
   },
   blockContent: {
     flexDirection: "row",
@@ -256,11 +236,11 @@ const styles = StyleSheet.create({
   blockName: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#1F2937",
+    color: theme.text,
     marginBottom: 6,
   },
   blockNameLocked: {
-    color: "#9CA3AF",
+    color: theme.textPlaceholder,
   },
   lockedBadge: {
     flexDirection: "row",
@@ -270,25 +250,24 @@ const styles = StyleSheet.create({
   lockedText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#9CA3AF",
+    color: theme.textPlaceholder,
   },
   chevronContainer: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: "#EEF2FF",
     alignItems: "center",
     justifyContent: "center",
   },
   popupOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: theme.overlay,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
   },
   popupContent: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 32,
     alignItems: "center",
@@ -298,7 +277,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#FEF3C7",
+    backgroundColor: theme.warningLight,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -306,18 +285,18 @@ const styles = StyleSheet.create({
   popupTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1F2937",
+    color: theme.text,
     marginBottom: 8,
   },
   popupMessage: {
     fontSize: 15,
-    color: "#6B7280",
+    color: theme.textMuted,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
   },
   popupButton: {
-    backgroundColor: "#6366F1",
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 48,

@@ -1,17 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { ArrowLeft, BookOpen, Clock } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { Block, Subject } from "@/types/database";
-import { apiGetSubjects } from "@/lib/api";
+import { useLibrary } from "@/contexts/LibraryContext";
+import { useNavigationLock } from "@/hooks/useNavigationLock";
+import { useTheme } from "@/contexts/ThemeContext";
+import { ThemeColors } from "@/constants/Colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SUBJECT_COLORS = [
   "#6366F1",
@@ -28,44 +30,24 @@ const SUBJECT_COLORS = [
 
 export default function BlockSubjectsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [block, setBlock] = useState<Block | null>(null);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { getBlock, getSubjectsByBlock } = useLibrary();
+  const navigate = useNavigationLock();
+  
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+  const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    loadBlockData();
-  }, [id]);
-
-  async function loadBlockData() {
-    try {
-      const { block: blockData, subjects: subjectsData } = await apiGetSubjects(
-        id!,
-      );
-
-      setBlock(blockData);
-      setSubjects(subjectsData);
-    } catch (error) {
-      console.error("Error loading block data:", error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6366F1" />
-      </View>
-    );
-  }
+  // Instant — no API, just filter cached data
+  const block = getBlock(id!);
+  const subjects = getSubjectsByBlock(id!);
 
   // Coming Soon if no subjects
   if (subjects.length === 0) {
     return (
       <View style={styles.container}>
         <LinearGradient
-          colors={["#6366F1", "#8B5CF6"]}
-          style={[styles.header, { paddingTop: 16 }]}
+          colors={[theme.primaryGradientStart, theme.primaryGradientEnd]}
+          style={[styles.header, { paddingTop: insets.top + 16 }]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
@@ -80,7 +62,7 @@ export default function BlockSubjectsScreen() {
         </LinearGradient>
         <View style={styles.comingSoonContainer}>
           <View style={styles.comingSoonIcon}>
-            <Clock color="#6366F1" size={48} />
+            <Clock color={theme.primary} size={48} />
           </View>
           <Text style={styles.comingSoonTitle}>Coming Soon</Text>
           <Text style={styles.comingSoonText}>
@@ -94,8 +76,8 @@ export default function BlockSubjectsScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["#6366F1", "#8B5CF6"]}
-        style={[styles.header, { paddingTop: 16 }]}
+        colors={[theme.primaryGradientStart, theme.primaryGradientEnd]}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
@@ -129,7 +111,7 @@ export default function BlockSubjectsScreen() {
           return (
             <TouchableOpacity
               style={styles.subjectCard}
-              onPress={() => router.push(`/subject/${subject.id}`)}
+              onPress={() => navigate(() => router.push(`/subject/${subject.id}`))}
             >
               <LinearGradient
                 colors={[color, color]}
@@ -154,16 +136,10 @@ export default function BlockSubjectsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: theme.background,
   },
   header: {
     paddingBottom: 32,
@@ -192,7 +168,7 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   descriptionCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 8,
@@ -207,17 +183,17 @@ const styles = StyleSheet.create({
   descriptionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1F2937",
+    color: theme.text,
     marginBottom: 6,
   },
   descriptionText: {
     fontSize: 14,
-    color: "#6B7280",
+    color: theme.textMuted,
     lineHeight: 20,
   },
   subjectCard: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     borderRadius: 16,
     overflow: "hidden",
     shadowColor: "#000",
@@ -244,13 +220,9 @@ const styles = StyleSheet.create({
   subjectName: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1F2937",
+    color: theme.text,
     textAlign: "center",
     marginBottom: 8,
-  },
-  subjectChapters: {
-    fontSize: 12,
-    color: "#6B7280",
   },
   comingSoonContainer: {
     flex: 1,
@@ -262,7 +234,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: theme.primaryLight,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
@@ -270,12 +242,12 @@ const styles = StyleSheet.create({
   comingSoonTitle: {
     fontSize: 24,
     fontWeight: "700",
-    color: "#1F2937",
+    color: theme.text,
     marginBottom: 12,
   },
   comingSoonText: {
     fontSize: 15,
-    color: "#6B7280",
+    color: theme.textMuted,
     textAlign: "center",
     lineHeight: 22,
   },

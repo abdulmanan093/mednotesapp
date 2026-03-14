@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  Switch,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -28,11 +30,19 @@ import {
   CalendarClock,
   ShieldCheck,
   ShieldX,
+  Moon,
 } from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { ThemeColors } from "@/constants/Colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
   const { user, isLoggedIn, login, logout } = useAuth();
+  const { theme, isDark, setMode } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(theme);
+
   const [contactVisible, setContactVisible] = useState(false);
   const [termsVisible, setTermsVisible] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
@@ -70,7 +80,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: 16 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
 
@@ -83,7 +93,7 @@ export default function SettingsScreen() {
             {/* User Profile Card */}
             <View style={styles.profileCard}>
               <LinearGradient
-                colors={["#6366F1", "#8B5CF6"]}
+                colors={[theme.primaryGradientStart, theme.primaryGradientEnd]}
                 style={styles.avatarGradient}
               >
                 <User color="#FFFFFF" size={32} />
@@ -97,7 +107,7 @@ export default function SettingsScreen() {
             {/* User Details */}
             <View style={styles.detailsCard}>
               <View style={styles.detailRow}>
-                <Mail color="#6366F1" size={18} />
+                <Mail color={theme.primary} size={18} />
                 <View style={styles.detailText}>
                   <Text style={styles.detailLabel}>Email</Text>
                   <Text style={styles.detailValue}>{user?.email}</Text>
@@ -105,7 +115,7 @@ export default function SettingsScreen() {
               </View>
               {user?.phone ? (
                 <View style={styles.detailRow}>
-                  <Phone color="#6366F1" size={18} />
+                  <Phone color={theme.primary} size={18} />
                   <View style={styles.detailText}>
                     <Text style={styles.detailLabel}>Phone Number</Text>
                     <Text style={styles.detailValue}>{user.phone}</Text>
@@ -114,7 +124,7 @@ export default function SettingsScreen() {
               ) : null}
               {user?.university ? (
                 <View style={styles.detailRow}>
-                  <Building2 color="#6366F1" size={18} />
+                  <Building2 color={theme.primary} size={18} />
                   <View style={styles.detailText}>
                     <Text style={styles.detailLabel}>University</Text>
                     <Text style={styles.detailValue}>{user.university}</Text>
@@ -123,7 +133,7 @@ export default function SettingsScreen() {
               ) : null}
               {user?.mbbs_year ? (
                 <View style={styles.detailRow}>
-                  <GraduationCap color="#6366F1" size={18} />
+                  <GraduationCap color={theme.primary} size={18} />
                   <View style={styles.detailText}>
                     <Text style={styles.detailLabel}>MBBS Year</Text>
                     <Text style={styles.detailValue}>
@@ -134,7 +144,7 @@ export default function SettingsScreen() {
               ) : null}
               {user?.access_end ? (
                 <View style={styles.detailRow}>
-                  <CalendarClock color="#6366F1" size={18} />
+                  <CalendarClock color={theme.primary} size={18} />
                   <View style={styles.detailText}>
                     <Text style={styles.detailLabel}>Access Expires</Text>
                     <Text style={styles.detailValue}>
@@ -149,9 +159,9 @@ export default function SettingsScreen() {
               ) : null}
               <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
                 {user?.status === "Disabled" ? (
-                  <ShieldX color="#EF4444" size={18} />
+                  <ShieldX color={theme.error} size={18} />
                 ) : (
-                  <ShieldCheck color="#10B981" size={18} />
+                  <ShieldCheck color={theme.success} size={18} />
                 )}
                 <View style={styles.detailText}>
                   <Text style={styles.detailLabel}>Account Status</Text>
@@ -160,7 +170,7 @@ export default function SettingsScreen() {
                       styles.detailValue,
                       {
                         color:
-                          user?.status === "Disabled" ? "#EF4444" : "#10B981",
+                          user?.status === "Disabled" ? theme.error : theme.success,
                       },
                     ]}
                   >
@@ -174,19 +184,36 @@ export default function SettingsScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>General</Text>
 
+              <View style={styles.menuItem}>
+                <View style={styles.menuItemLeft}>
+                  <View
+                    style={[styles.menuIcon, { backgroundColor: theme.primaryLight }]}
+                  >
+                    <Moon color={theme.primary} size={20} />
+                  </View>
+                  <Text style={styles.menuItemText}>Dark Mode</Text>
+                </View>
+                <Switch 
+                  value={isDark} 
+                  onValueChange={(val) => setMode(val ? "dark" : "light")} 
+                  trackColor={{ false: theme.border, true: theme.primary }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => setContactVisible(true)}
               >
                 <View style={styles.menuItemLeft}>
                   <View
-                    style={[styles.menuIcon, { backgroundColor: "#DBEAFE" }]}
+                    style={[styles.menuIcon, { backgroundColor: theme.infoLight }]}
                   >
-                    <Phone color="#3B82F6" size={20} />
+                    <Phone color={theme.info} size={20} />
                   </View>
                   <Text style={styles.menuItemText}>Contact Us</Text>
                 </View>
-                <ChevronRight color="#9CA3AF" size={20} />
+                <ChevronRight color={theme.textPlaceholder} size={20} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -195,13 +222,13 @@ export default function SettingsScreen() {
               >
                 <View style={styles.menuItemLeft}>
                   <View
-                    style={[styles.menuIcon, { backgroundColor: "#FEF3C7" }]}
+                    style={[styles.menuIcon, { backgroundColor: theme.warningLight }]}
                   >
-                    <FileText color="#F59E0B" size={20} />
+                    <FileText color={theme.warning} size={20} />
                   </View>
                   <Text style={styles.menuItemText}>Terms & Conditions</Text>
                 </View>
-                <ChevronRight color="#9CA3AF" size={20} />
+                <ChevronRight color={theme.textPlaceholder} size={20} />
               </TouchableOpacity>
             </View>
 
@@ -212,41 +239,49 @@ export default function SettingsScreen() {
               >
                 <View style={styles.menuItemLeft}>
                   <View
-                    style={[styles.menuIcon, { backgroundColor: "#FEE2E2" }]}
+                    style={[styles.menuIcon, { backgroundColor: theme.errorLight }]}
                   >
-                    <LogOut color="#EF4444" size={20} />
+                    <LogOut color={theme.error} size={20} />
                   </View>
-                  <Text style={[styles.menuItemText, { color: "#EF4444" }]}>
+                  <Text style={[styles.menuItemText, { color: theme.error }]}>
                     Logout
                   </Text>
                 </View>
-                <ChevronRight color="#9CA3AF" size={20} />
+                <ChevronRight color={theme.textPlaceholder} size={20} />
               </TouchableOpacity>
             </View>
           </>
         ) : (
           <>
             {/* Login Card */}
-            <View style={styles.loginCard}>
-              <View style={styles.loginIconContainer}>
-                <LinearGradient
-                  colors={["#6366F1", "#8B5CF6"]}
-                  style={styles.loginIconGradient}
-                >
-                  <LogIn color="#FFFFFF" size={32} />
-                </LinearGradient>
-              </View>
+            <View style={styles.loginCardWrapper}>
+              <LinearGradient
+                colors={["#6366F1", "#3B82F6", "#8B5CF6"]}
+                style={styles.loginCardBorder}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.loginCard}>
+                  <View style={styles.loginIconContainer}>
+                    <View style={styles.loginIconBackground}>
+                      <Image
+                        source={require("@/assets/images/logo.png")}
+                        style={styles.loginImage}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  </View>
               <Text style={styles.loginTitle}>Welcome to Medical Notes</Text>
               <Text style={styles.loginSubtitle}>
                 Login with your registered email to access your courses
               </Text>
 
               <View style={styles.inputContainer}>
-                <Mail color="#9CA3AF" size={20} />
+                <Mail color={theme.textPlaceholder} size={20} />
                 <TextInput
                   style={styles.emailInput}
                   placeholder="Enter your email"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={theme.textPlaceholder}
                   value={loginEmail}
                   onChangeText={(t) => {
                     setLoginEmail(t);
@@ -274,22 +309,43 @@ export default function SettingsScreen() {
                 )}
               </TouchableOpacity>
             </View>
+          </LinearGradient>
+        </View>
 
             {/* Still show Contact & Terms when logged out */}
             <View style={styles.section}>
+              <Text style={styles.sectionTitle}>General</Text>
+              
+              <View style={styles.menuItem}>
+                <View style={styles.menuItemLeft}>
+                  <View
+                    style={[styles.menuIcon, { backgroundColor: theme.primaryLight }]}
+                  >
+                    <Moon color={theme.primary} size={20} />
+                  </View>
+                  <Text style={styles.menuItemText}>Dark Mode</Text>
+                </View>
+                <Switch 
+                  value={isDark} 
+                  onValueChange={(val) => setMode(val ? "dark" : "light")} 
+                  trackColor={{ false: theme.border, true: theme.primary }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => setContactVisible(true)}
               >
                 <View style={styles.menuItemLeft}>
                   <View
-                    style={[styles.menuIcon, { backgroundColor: "#DBEAFE" }]}
+                    style={[styles.menuIcon, { backgroundColor: theme.infoLight }]}
                   >
-                    <Phone color="#3B82F6" size={20} />
+                    <Phone color={theme.info} size={20} />
                   </View>
                   <Text style={styles.menuItemText}>Contact Us</Text>
                 </View>
-                <ChevronRight color="#9CA3AF" size={20} />
+                <ChevronRight color={theme.textPlaceholder} size={20} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -298,13 +354,13 @@ export default function SettingsScreen() {
               >
                 <View style={styles.menuItemLeft}>
                   <View
-                    style={[styles.menuIcon, { backgroundColor: "#FEF3C7" }]}
+                    style={[styles.menuIcon, { backgroundColor: theme.warningLight }]}
                   >
-                    <FileText color="#F59E0B" size={20} />
+                    <FileText color={theme.warning} size={20} />
                   </View>
                   <Text style={styles.menuItemText}>Terms & Conditions</Text>
                 </View>
-                <ChevronRight color="#9CA3AF" size={20} />
+                <ChevronRight color={theme.textPlaceholder} size={20} />
               </TouchableOpacity>
             </View>
           </>
@@ -320,15 +376,15 @@ export default function SettingsScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Contact Us</Text>
               <TouchableOpacity onPress={() => setContactVisible(false)}>
-                <X color="#6B7280" size={24} />
+                <X color={theme.textMuted} size={24} />
               </TouchableOpacity>
             </View>
             <View style={styles.contactItem}>
-              <Mail color="#6366F1" size={20} />
+              <Mail color={theme.primary} size={20} />
               <Text style={styles.contactText}>abdul10761093174@gmail.com</Text>
             </View>
             <View style={styles.contactItem}>
-              <Phone color="#6366F1" size={20} />
+              <Phone color={theme.primary} size={20} />
               <Text style={styles.contactText}>+923106078374</Text>
             </View>
             <Text style={styles.contactNote}>
@@ -355,7 +411,7 @@ export default function SettingsScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Terms & Conditions</Text>
               <TouchableOpacity onPress={() => setTermsVisible(false)}>
-                <X color="#6B7280" size={24} />
+                <X color={theme.textMuted} size={24} />
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -379,22 +435,22 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: theme.background,
   },
   header: {
     paddingBottom: 20,
     paddingHorizontal: 24,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    borderBottomColor: theme.border,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "700",
-    color: "#1F2937",
+    color: theme.text,
   },
   scrollView: {
     flex: 1,
@@ -402,7 +458,7 @@ const styles = StyleSheet.create({
   profileCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     marginHorizontal: 16,
     marginTop: 16,
     padding: 20,
@@ -427,20 +483,20 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1F2937",
+    color: theme.text,
     marginBottom: 4,
   },
   profileEmail: {
     fontSize: 14,
-    color: "#6B7280",
+    color: theme.textMuted,
     marginBottom: 2,
   },
   profilePhone: {
     fontSize: 14,
-    color: "#6B7280",
+    color: theme.textMuted,
   },
   detailsCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     marginHorizontal: 16,
     marginTop: 12,
     borderRadius: 16,
@@ -457,7 +513,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: theme.background,
     gap: 14,
   },
   detailText: {
@@ -466,7 +522,7 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#9CA3AF",
+    color: theme.textPlaceholder,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 2,
@@ -474,41 +530,61 @@ const styles = StyleSheet.create({
   detailValue: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#1F2937",
+    color: theme.text,
   },
-  loginCard: {
-    backgroundColor: "#FFFFFF",
+  loginCardWrapper: {
     marginHorizontal: 16,
     marginTop: 24,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  loginCardBorder: {
+    padding: 2,
+    borderRadius: 24,
+  },
+  loginCard: {
+    backgroundColor: theme.card,
     padding: 32,
-    borderRadius: 20,
+    borderRadius: 22, 
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
   },
   loginIconContainer: {
     marginBottom: 20,
+    backgroundColor: theme.card,
+    borderRadius: 28,
+    padding: 4,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  loginIconGradient: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+  loginIconBackground: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden", 
+  },
+  loginImage: {
+    width: "100%",
+    height: "100%",
   },
   loginTitle: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#1F2937",
+    color: theme.text,
     marginBottom: 8,
     textAlign: "center",
   },
   loginSubtitle: {
     fontSize: 14,
-    color: "#6B7280",
+    color: theme.textMuted,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 24,
@@ -516,9 +592,9 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: theme.background,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -529,16 +605,16 @@ const styles = StyleSheet.create({
   emailInput: {
     flex: 1,
     fontSize: 15,
-    color: "#1F2937",
+    color: theme.text,
   },
   errorText: {
-    color: "#EF4444",
+    color: theme.error,
     fontSize: 13,
     marginBottom: 12,
     textAlign: "center",
   },
   loginButton: {
-    backgroundColor: "#6366F1",
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 16,
     width: "100%",
@@ -557,7 +633,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#6B7280",
+    color: theme.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 12,
@@ -567,7 +643,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
@@ -593,13 +669,13 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1F2937",
+    color: theme.text,
   },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
@@ -612,19 +688,19 @@ const styles = StyleSheet.create({
   version: {
     textAlign: "center",
     fontSize: 13,
-    color: "#9CA3AF",
+    color: theme.textPlaceholder,
     marginTop: 32,
     marginBottom: 24,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: theme.overlay,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 24,
     width: "100%",
@@ -639,7 +715,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1F2937",
+    color: theme.text,
   },
   contactItem: {
     flexDirection: "row",
@@ -647,17 +723,17 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: theme.background,
     borderRadius: 12,
   },
   contactText: {
     fontSize: 15,
-    color: "#1F2937",
+    color: theme.text,
     fontWeight: "500",
   },
   contactNote: {
     fontSize: 14,
-    color: "#6B7280",
+    color: theme.textMuted,
     lineHeight: 20,
     marginBottom: 20,
   },
@@ -667,11 +743,11 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 14,
-    color: "#374151",
+    color: theme.text,
     lineHeight: 22,
   },
   modalButton: {
-    backgroundColor: "#6366F1",
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",

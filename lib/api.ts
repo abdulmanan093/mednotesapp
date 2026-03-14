@@ -89,3 +89,26 @@ export async function apiGetChapters(subjectId: string) {
     notes: NoteWithUrl[];
   }>(`/api/mobile/chapters?subject_id=${encodeURIComponent(subjectId)}`);
 }
+
+export interface LibraryResponse {
+  blocks: Block[];
+  subjects: Subject[];
+  chapters: Chapter[];
+  notes: NoteWithUrl[];
+}
+
+export async function apiGetLibrary(cacheBuster?: number | string) {
+  const qs = cacheBuster ? `?t=${encodeURIComponent(String(cacheBuster))}` : "";
+  return request<LibraryResponse>(`/api/mobile/library${qs}`);
+}
+
+export interface LibraryVersionResponse {
+  version: string | null;
+}
+
+export async function apiGetLibraryVersion() {
+  // Add a cache-buster to avoid any intermediate caching (CDN/proxies)
+  return request<LibraryVersionResponse>(
+    `/api/mobile/library-version?t=${Date.now()}`,
+  );
+}
