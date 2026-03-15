@@ -32,7 +32,8 @@ interface ChapterWithNotes {
 
 export default function SubjectChaptersScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getSubject, getChaptersBySubject, getNotesByChapter } = useLibrary();
+  const { getSubject, getChaptersBySubject, getNotesByChapter, isOffline } =
+    useLibrary();
   const navigate = useNavigationLock();
 
   const { theme } = useTheme();
@@ -81,7 +82,7 @@ export default function SubjectChaptersScreen() {
     }
   }
 
-  // Coming Soon if no chapters exist
+  // Coming Soon if no chapters exist (or offline message if nothing is cached)
   if (chapters.length === 0) {
     return (
       <View style={styles.container}>
@@ -104,9 +105,13 @@ export default function SubjectChaptersScreen() {
           <View style={styles.comingSoonIcon}>
             <Clock color={theme.primary} size={48} />
           </View>
-          <Text style={styles.comingSoonTitle}>Coming Soon</Text>
+          <Text style={styles.comingSoonTitle}>
+            {isOffline ? "Connect to internet first" : "Coming Soon"}
+          </Text>
           <Text style={styles.comingSoonText}>
-            Chapters for this subject are being prepared. Check back soon!
+            {isOffline
+              ? "You are offline and this content is not cached yet."
+              : "Chapters for this subject are being prepared. Check back soon!"}
           </Text>
         </View>
       </View>

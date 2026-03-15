@@ -9,7 +9,12 @@ import React, {
 import { AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Block, Subject, Chapter } from "@/types/database";
-import { NoteWithUrl, apiGetLibrary, apiGetLibraryVersion } from "@/lib/api";
+import {
+  ApiError,
+  NoteWithUrl,
+  apiGetLibrary,
+  apiGetLibraryVersion,
+} from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const CACHE_KEY = "@mednotes_library_v1";
@@ -33,6 +38,8 @@ interface LibraryContextType {
   isLoading: boolean;
   /** true if a background refresh is happening */
   isRefreshing: boolean;
+  /** best-effort indicator that the device is offline */
+  isOffline: boolean;
   blocks: Block[];
   subjects: Subject[];
   chapters: Chapter[];
@@ -49,6 +56,7 @@ interface LibraryContextType {
 const LibraryContext = createContext<LibraryContextType>({
   isLoading: true,
   isRefreshing: false,
+  isOffline: false,
   blocks: [],
   subjects: [],
   chapters: [],
@@ -75,8 +83,10 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
 
   const currentVersionRef = useRef<string | null>(null);
+  const hasEverFetchedRef = useRef(false);
   const refreshLockRef = useRef(false);
   const checkLockRef = useRef(false);
   const lastForcedRefreshRef = useRef(0);
@@ -84,6 +94,10 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     currentVersionRef.current = data.version ?? null;
   }, [data.version]);
+
+  useEffect(() => {
+    if (data.fetchedAt > 0) hasEverFetchedRef.current = true;
+  }, [data.fetchedAt]);
 
   const applyData = useCallback((d: LibraryData) => {
     setData(d);
@@ -106,8 +120,12 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         };
         applyData(fresh);
         await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(fresh));
-      } catch (e) {
-        console.warn("LibraryContext: background refresh failed", e);
+        setIsOffline(false);
+      } catch (err: unknown) {
+        if (err instanceof ApiError && err.isNetworkError) {
+          setIsOffline(true);
+        }
+        console.warn("LibraryContext: background refresh failed", err);
       } finally {
         refreshLockRef.current = false;
       }
@@ -125,6 +143,17 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       const latest = res.version;
       const current = currentVersionRef.current;
 
+      setIsOffline(false);
+
+      // If we have never successfully fetched the library (e.g. cold-started offline),
+      // then the first time we can reach the server we should fetch the full library.
+      if (latest && !hasEverFetchedRef.current) {
+        setIsRefreshing(true);
+        await fetchAndStore(latest);
+        setIsRefreshing(false);
+        return;
+      }
+
       // If we don't have a version yet, adopt it (no full refresh needed)
       if (!current && latest) {
         currentVersionRef.current = latest;
@@ -139,6 +168,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (e) {
       // Ignore version check errors; the app still works with cached data
+      if (e instanceof ApiError && e.isNetworkError) {
+        setIsOffline(true);
+      }
       console.warn("LibraryContext: version check failed", e);
 
       // If the change-check endpoint isn't available (or network is flaky),
@@ -281,6 +313,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       value={{
         isLoading,
         isRefreshing,
+        isOffline,
         blocks: data.blocks,
         subjects: data.subjects,
         chapters: data.chapters,

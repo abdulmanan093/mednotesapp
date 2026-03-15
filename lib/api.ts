@@ -1,27 +1,69 @@
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || "";
 
+export class ApiError extends Error {
+  url: string;
+  status?: number;
+  isNetworkError: boolean;
+
+  constructor(
+    message: string,
+    {
+      url,
+      status,
+      isNetworkError,
+      cause,
+    }: {
+      url: string;
+      status?: number;
+      isNetworkError: boolean;
+      cause?: unknown;
+    },
+  ) {
+    super(message);
+    this.name = "ApiError";
+    this.url = url;
+    this.status = status;
+    this.isNetworkError = isNetworkError;
+    if (cause !== undefined) {
+      // Keep the original error for debugging in environments that support it.
+      (this as unknown as { cause?: unknown }).cause = cause;
+    }
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Network request failed";
+    throw new ApiError(message, { url, isNetworkError: true, cause: err });
+  }
 
   const text = await res.text();
   let json: T;
   try {
     json = JSON.parse(text);
   } catch {
-    throw new Error(
+    throw new ApiError(
       `API returned non-JSON from ${url} (status ${res.status}): ${text.slice(0, 200)}`,
+      { url, status: res.status, isNetworkError: false },
     );
   }
 
   if (!res.ok) {
-    throw new Error((json as Record<string, string>).error || "Request failed");
+    throw new ApiError(
+      (json as Record<string, string>).error || "Request failed",
+      { url, status: res.status, isNetworkError: false },
+    );
   }
 
   return json;

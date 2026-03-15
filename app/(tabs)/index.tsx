@@ -32,7 +32,7 @@ interface YearGroup {
 }
 
 export default function HomeScreen() {
-  const { blocks, isLoading } = useLibrary();
+  const { blocks, isLoading, isOffline } = useLibrary();
   const navigate = useNavigationLock();
   
   const { theme, isDark } = useTheme();
@@ -88,6 +88,32 @@ export default function HomeScreen() {
             size="small"
             color={theme.primary}
           />
+        </View>
+      </View>
+    );
+  }
+
+  if (yearGroups.length === 0 && isOffline) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          <View style={styles.logoContainer}>
+            <View style={styles.logoBackground}>
+              <Image
+                source={require("@/assets/images/logo.png")}
+                style={styles.logoImage}
+                resizeMode="cover"
+              />
+            </View>
+          </View>
+          <Text style={styles.headerTitle}>Medical Notes</Text>
+          <Text style={styles.headerSubtitle}>Connect to internet first</Text>
+        </View>
+
+        <View style={styles.skeletonContainer}>
+          <Text style={{ color: theme.textMuted, textAlign: "center" }}>
+            You are offline and no content is cached yet.
+          </Text>
         </View>
       </View>
     );

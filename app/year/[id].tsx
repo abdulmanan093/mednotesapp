@@ -35,7 +35,7 @@ export default function YearBlocksScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const yearNumber = parseInt(id || "1", 10);
   const { isLoggedIn, isBlockAccessible, isAccountDisabled } = useAuth();
-  const { getBlocksByYear } = useLibrary();
+  const { getBlocksByYear, isOffline } = useLibrary();
   const [showLockedPopup, setShowLockedPopup] = useState(false);
   const navigate = useNavigationLock();
   
@@ -45,6 +45,36 @@ export default function YearBlocksScreen() {
 
   // No loading, no API call — instant filter from cache
   const blocks = getBlocksByYear(yearNumber);
+
+  if (blocks.length === 0 && isOffline) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={[theme.primaryGradientStart, theme.primaryGradientEnd]}
+          style={[styles.header, { paddingTop: insets.top + 16 }]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <ArrowLeft color="#FFFFFF" size={24} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {YEAR_LABELS[yearNumber] || `Year ${yearNumber}`}
+          </Text>
+          <Text style={styles.headerSubtitle}>Connect to internet first</Text>
+        </LinearGradient>
+
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <Text style={{ color: theme.textMuted, textAlign: "center" }}>
+            You are offline and this content is not cached yet.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   function handleBlockPress(blockId: string) {
     if (!isLoggedIn || !isBlockAccessible(blockId)) {

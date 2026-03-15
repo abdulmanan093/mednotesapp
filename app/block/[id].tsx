@@ -30,7 +30,7 @@ const SUBJECT_COLORS = [
 
 export default function BlockSubjectsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getBlock, getSubjectsByBlock } = useLibrary();
+  const { getBlock, getSubjectsByBlock, isOffline } = useLibrary();
   const navigate = useNavigationLock();
   
   const { theme } = useTheme();
@@ -41,7 +41,7 @@ export default function BlockSubjectsScreen() {
   const block = getBlock(id!);
   const subjects = getSubjectsByBlock(id!);
 
-  // Coming Soon if no subjects
+  // Coming Soon if no subjects (or offline message if nothing is cached)
   if (subjects.length === 0) {
     return (
       <View style={styles.container}>
@@ -64,9 +64,13 @@ export default function BlockSubjectsScreen() {
           <View style={styles.comingSoonIcon}>
             <Clock color={theme.primary} size={48} />
           </View>
-          <Text style={styles.comingSoonTitle}>Coming Soon</Text>
+          <Text style={styles.comingSoonTitle}>
+            {isOffline ? "Connect to internet first" : "Coming Soon"}
+          </Text>
           <Text style={styles.comingSoonText}>
-            Subjects for this block are being prepared. Check back soon!
+            {isOffline
+              ? "You are offline and this content is not cached yet."
+              : "Subjects for this block are being prepared. Check back soon!"}
           </Text>
         </View>
       </View>

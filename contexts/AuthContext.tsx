@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Device from "expo-device";
-import { apiLogin, AuthUser, DeviceInfo } from "@/lib/api";
+import { apiLogin, ApiError, AuthUser, DeviceInfo } from "@/lib/api";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -54,10 +54,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(freshUser);
       await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(freshUser));
-    } catch {
-      // If user was disabled/removed the API returns an error
-      setUser(null);
-      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch (err: unknown) {
+      // Important: do NOT log out on offline / network errors.
+      // Only clear auth when the server confirms the account is invalid/disabled.
+      if (err instanceof ApiError) {
+        if (err.isNetworkError) return;
+        if (err.status === 403 || err.status === 404) {
+          setUser(null);
+          await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+        }
+        return;
+      }
+
+      // Unknown error type: keep the cached user and try again later.
     }
   }
 
