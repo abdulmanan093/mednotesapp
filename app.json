@@ -4,7 +4,7 @@
     "slug": "mednotes-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/user-ios-icon.png",
+    "icon": "./assets/images/adaptive-icon.png",
     "scheme": "mednotesapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,7 +14,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/images/user-android-icon.png"
+        "foregroundImage": "./assets/images/adaptive-icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -22,7 +22,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/user-ios-icon.png"
+      "favicon": "./assets/images/adaptive-icon.png"
     },
     "plugins": [
       "expo-router",
